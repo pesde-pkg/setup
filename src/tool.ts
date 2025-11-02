@@ -26,7 +26,10 @@ export class ToolManager {
 		return this;
 	}
 
-	public async install(installDir = import.meta.dirname, binaryName = this.githubRepo.repo): Promise<string | undefined> {
+	public async install(
+		installDir = import.meta.dirname,
+		binaryName = this.githubRepo.repo
+	): Promise<string | undefined> {
 		const logger = this.logger.child({ scope: "toolmanager.install" });
 
 		const assetDescriptor = await this.findCompatibleAsset();
