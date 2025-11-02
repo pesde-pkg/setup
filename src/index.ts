@@ -33,5 +33,7 @@ async function setupTool(repo: Repo, version: string) {
 	core.addPath(toolPath);
 }
 
-await setupTool(tools.lune, core.getInput("lune-version"));
+const luneVersion = core.getInput("lune-version");
+if (luneVersion !== "") await setupTool(tools.lune, luneVersion);
+
 await setupTool(tools.pesde, core.getInput("version"));
