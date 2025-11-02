@@ -2,10 +2,12 @@
 	"name": "setup-pesde",
 	"version": "0.1.0",
 	"description": "",
-	"main": "index.js",
+	"main": "dist/index.js",
 	"type": "module",
 	"scripts": {
 		"prettier": "node --experimental-strip-types node_modules/prettier/bin/prettier.cjs",
+		"build": "tsup",
+		"dev": "pnpm build && NODE_LOG=debug GITHUB_TOKEN=$(gh auth token) node dist/",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
 	"keywords": [],
