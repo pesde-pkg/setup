@@ -11,6 +11,11 @@ import _, { decompressCommonFormats, fallibleToNull, humanReadableSize, type Rel
 
 import type { Endpoints } from "@octokit/types";
 
+export interface InstallResult {
+	path?: string;
+	version: string;
+}
+
 export class ToolManager {
 	// base arguments for any repo related operations
 	private githubRepo: Endpoints["GET /repos/{owner}/{repo}"]["parameters"];
@@ -30,7 +35,7 @@ export class ToolManager {
 		download: Downloader,
 		installDir = import.meta.dirname,
 		binaryName = this.githubRepo.repo
-	): Promise<string | undefined> {
+	): Promise<InstallResult> {
 		const logger = this.logger.child({ scope: "toolmanager.install" });
 
 		const assetDescriptor = await this.findCompatibleAsset();
@@ -45,13 +50,14 @@ export class ToolManager {
 
 		logger.info(`Attempting to download '${assetName}' (${humanReadableSize(assetSize)})`);
 
+		const result: InstallResult = { version: this.versionOrPredicate as string };
 		const tempdir = await mkdtemp(join(tmpdir(), `${pkg.name}-`));
 		try {
 			const compressedArchive = join(tempdir, assetDescriptor.asset.name);
 
 			// download and decompress the file
 			await download(assetDescriptor.asset.browser_download_url, compressedArchive, assetSize);
-			return await decompressCommonFormats(compressedArchive, installDir, {
+			await decompressCommonFormats(compressedArchive, installDir, {
 				filter: (file) => basename(file.path) == binaryName,
 				strip: 5 // fixme: figure this value out
 			})
@@ -60,17 +66,22 @@ export class ToolManager {
 						? Promise.reject(`Could not find binary '${binaryName} in downloaded artifact'`)
 						: Promise.resolve(files)
 				)
-				.then(() => join(installDir, binaryName))
+				.then(() => (result.path = join(installDir, binaryName)))
 				.catch((err) => void logger.error(err));
 		} finally {
 			await rm(tempdir, { recursive: true });
 		}
+
+		// if result.path isn't defined, there has been an error
+		return result;
 	}
 
 	public async findCompatibleAsset() {
 		const logger = this.logger.child({ scope: "toolmanager.findCompatibleAsset" });
 
 		const { version, assets } = await this.resolveVersion();
+		this.versionOrPredicate = version; // prevent re-evaluating in the future
+
 		logger.info(`Received ${assets.length} assets for ${this.githubRepo.repo}@${version}`);
 
 		const assetDescriptors = assets.filterMap((asset) => fallibleToNull(() => new ReleaseAssetDescriptor(asset)));

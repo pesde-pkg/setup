@@ -24,9 +24,6 @@ import { DownloadProvider } from "./download.js";
 // 		}
 // 	});
 
-// todo: - make this a `lib/` and have an `src/` for just the actions part
-//       - we can also make an `Io` interface which we implement for two classes,
-//         one for github actions using `@actions/io` and another using node apis
 // todo: structured errors
 
 export { ToolManager, DownloadProvider };
