@@ -1,6 +1,11 @@
 import { mkdir } from "node:fs/promises";
 
 import decompress from "decompress";
+import decompressTar from "decompress-tar";
+import decompressTargz from "decompress-targz";
+import decompressTarbz2 from "decompress-tarbz2";
+import decompressTarxz from "decompress-tarxz";
+import decompressUnzip from "decompress-unzip";
 import type { components } from "@octokit/openapi-types";
 
 export type ReleaseAsset = components["schemas"]["release-asset"];
@@ -32,10 +37,9 @@ export async function decompressCommonFormats(
 	output?: string | DecompressOptions,
 	options?: DecompressOptions
 ): Promise<decompress.File[]> {
-	const plugins = ["decompress-tar", "decompress-targz", "decompress-tarbz2", "decompress-tarxz", "decompress-unzip"];
 	return decompress(input, output, {
 		...options,
-		plugins: await Promise.all(plugins.map(async (plugin) => await import(plugin).then((mod) => mod.default())))
+		plugins: [decompressTar(), decompressTargz(), decompressTarbz2(), decompressTarxz(), decompressUnzip()]
 	});
 }
 
