@@ -114659,14 +114659,27 @@ async function setupTool(repo, version) {
   }
   coreExports.addPath(toolPath);
 }
-if (coreExports.getState("needsCache") === "true") {
-  await cacheExports.saveCache(PESDE_PACKAGE_DIRS, await cacheKey());
-  coreExports.saveState("needsCache", false);
+const cacheLogger = parentLogger.child({ scope: "actions.cache" });
+if (coreExports.getState("post") === "true") {
+  if (coreExports.getState("needsCache") === "true") {
+    const cacheId = await cacheExports.saveCache(PESDE_PACKAGE_DIRS, await cacheKey());
+    coreExports.saveState("needsCache", false);
+    cacheLogger.info(`Successfully cached to ${cacheId}, exiting`);
+  } else {
+    cacheLogger.info("No caching required, exiting");
+  }
   exit(0);
 }
 const luneVersion = coreExports.getInput("lune-version");
 if (luneVersion !== "") await setupTool(tools.lune, luneVersion);
-await setupTool(tools.pesde, coreExports.getInput("version") || "latest");
+await setupTool(tools.pesde, coreExports.getInput("version") || "latest").finally(() => coreExports.saveState("post", true));
 if (coreExports.getBooleanInput("cache")) {
-  await cacheExports.restoreCache(PESDE_PACKAGE_DIRS, await cacheKey()).then((hit) => !hit ? coreExports.saveState("needsCache", true) : {});
+  await cacheExports.restoreCache(PESDE_PACKAGE_DIRS, await cacheKey()).then((hit) => {
+    if (!hit) {
+      cacheLogger.warn("Cache miss, dispatching future post-run to save cache");
+      coreExports.saveState("needsCache", true);
+      return;
+    }
+    cacheLogger.info(`Restored cache key ${hit} successfully`);
+  });
 }

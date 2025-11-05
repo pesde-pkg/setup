@@ -40,10 +40,19 @@ async function setupTool(repo: Repo, version: string) {
 	core.addPath(toolPath);
 }
 
-if (core.getState("needsCache") === "true") {
-	// post-run invocation, just cache and exit
-	await cache.saveCache(PESDE_PACKAGE_DIRS, await cacheKey());
-	core.saveState("needsCache", false);
+const cacheLogger = parentLogger.child({ scope: "actions.cache" });
+
+if (core.getState("post") === "true") {
+	// post-run invocation, just cache or exit
+
+	if (core.getState("needsCache") === "true") {
+		const cacheId = await cache.saveCache(PESDE_PACKAGE_DIRS, await cacheKey());
+		core.saveState("needsCache", false);
+
+		cacheLogger.info(`Successfully cached to ${cacheId}, exiting`);
+	} else {
+		cacheLogger.info("No caching required, exiting");
+	}
 
 	exit(0);
 }
@@ -51,9 +60,15 @@ if (core.getState("needsCache") === "true") {
 const luneVersion = core.getInput("lune-version");
 if (luneVersion !== "") await setupTool(tools.lune, luneVersion);
 
-await setupTool(tools.pesde, core.getInput("version") || "latest");
+await setupTool(tools.pesde, core.getInput("version") || "latest").finally(() => core.saveState("post", true));
 if (core.getBooleanInput("cache")) {
-	await cache
-		.restoreCache(PESDE_PACKAGE_DIRS, await cacheKey())
-		.then((hit) => (!hit ? core.saveState("needsCache", true) : {}));
+	await cache.restoreCache(PESDE_PACKAGE_DIRS, await cacheKey()).then((hit) => {
+		if (!hit) {
+			cacheLogger.warn("Cache miss, dispatching future post-run to save cache");
+			core.saveState("needsCache", true);
+			return;
+		}
+
+		cacheLogger.info(`Restored cache key ${hit} successfully`);
+	});
 }
