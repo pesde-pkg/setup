@@ -1,4 +1,4 @@
-import log, { isDebug } from "./logging.js";
+import log, { isDebug } from "./logging/index.js";
 
 import { getInput } from "@actions/core";
 import { getOctokit } from "@actions/github";

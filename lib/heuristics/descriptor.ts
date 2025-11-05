@@ -1,4 +1,4 @@
-import logging from "@/logging.js";
+import logging from "@/logging/index.js";
 import { currentSystem as arch, detectArch, type Arch } from "./arch.js";
 import { currentSystem as os, detectOS, type OS } from "./os.js";
 import type { ReleaseAsset } from "@/util.js";

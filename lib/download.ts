@@ -3,8 +3,8 @@ import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 import path from "node:path";
 
-import parentLogger from "./logging.js";
-import { SpinnerTransport } from "./spinner.js";
+import parentLogger from "./logging/index.js";
+import { SpinnerTransport } from "./logging/spinner.js";
 import { ensureExists, fallibleToNull, humanReadableSize } from "./util.js";
 import { fetchWithLogs } from "./github.js";
 

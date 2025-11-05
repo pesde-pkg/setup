@@ -6,7 +6,7 @@ import pkg from "../package.json" with { type: "json" };
 import type { Downloader } from "./download.js";
 import { client as gh } from "./github.js";
 import { PlatformDescriptor, ReleaseAssetDescriptor } from "./heuristics/descriptor.js";
-import log from "./logging.js";
+import log from "./logging/index.js";
 import _, { decompressCommonFormats, fallibleToNull, humanReadableSize, type ReleaseAsset } from "./util.js";
 
 import type { Endpoints } from "@octokit/types";

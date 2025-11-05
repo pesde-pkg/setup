@@ -1,10 +1,11 @@
 import { appendFileSync, existsSync } from "node:fs";
 
-import pkg from "../package.json" with { type: "json" };
+import pkg from "../../package.json" with { type: "json" };
 import { SpinnerTransport } from "./spinner.js";
 
 import { isDebug as actionsDebug } from "@actions/core";
 import winston from "winston";
+import { ActionsTransport } from "./actions.js";
 
 // todo: decouple
 export const isDebug = () => process.env.DEV_DEBUG || process.env.NODE_LOG === "debug" || actionsDebug();
@@ -31,6 +32,7 @@ export default winston.createLogger({
 
 	transports: [
 		new SpinnerTransport(),
+		new ActionsTransport(),
 		(() => {
 			// append a small "comment" to denote the timing of the logs
 			const logFile = `${pkg.name}.log`;
@@ -47,7 +49,5 @@ export default winston.createLogger({
 				level: "debug"
 			});
 		})()
-
-		// todo: transport for actions core
 	]
 });

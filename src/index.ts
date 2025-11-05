@@ -1,7 +1,7 @@
 import { dirname } from "node:path";
 
 import { DownloadProvider } from "@/index.js";
-import logging from "@/logging.js";
+import logging from "@/logging/index.js";
 import { ToolManager } from "@/tool.js";
 import { cacheKey, PESDE_PACKAGE_DIRS } from "./cache.js";
 
