@@ -31,8 +31,7 @@ export default winston.createLogger({
 			: winston.format.combine(baseFormat, winston.format.cli()),
 
 	transports: [
-		new SpinnerTransport(),
-		new ActionsTransport(),
+		process.env.GITHUB_ACTIONS === "true" ? new ActionsTransport() : new SpinnerTransport(),
 		(() => {
 			// append a small "comment" to denote the timing of the logs
 			const logFile = `${pkg.name}.log`;

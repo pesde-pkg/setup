@@ -17,25 +17,22 @@ export class ActionsTransport extends Transport {
 	override log(info: any, callback: () => void): void {
 		setImmediate(() => this.emit("logged", info));
 
-		if (process.env.GITHUB_ACTIONS === "true") {
-			const level = info[Symbol.for("level")];
-			const message = stripScopeFromMessage(info.message);
-			switch (level) {
-				case "info":
-					core.info(message);
-					break;
-				case "warn":
-					core.warning(message);
-					break;
-				case "error":
-					core.error(message);
-					break;
-				case "debug":
-					core.debug(message);
-					break;
-			}
+		const level = info[Symbol.for("level")];
+		const message = stripScopeFromMessage(info.message);
+		switch (level) {
+			case "info":
+				core.info(message);
+				break;
+			case "warn":
+				core.warning(message);
+				break;
+			case "error":
+				core.error(message);
+				break;
+			case "debug":
+				core.debug(message);
+				break;
 		}
-		// should be a no-op outside github actions
 
 		callback();
 	}
