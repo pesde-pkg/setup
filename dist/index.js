@@ -59013,7 +59013,7 @@ class ToolManager {
     this.versionOrPredicate = versionOrPredicate;
     return this;
   }
-  async install(download, installDir = import.meta.dirname, binaryName = this.githubRepo.repo) {
+  async install(download, installDir = import.meta.dirname, binaryName = this.githubRepo.repo + (process.platform === "win32" ? ".exe" : "")) {
     const logger = this.logger.child({ scope: "toolmanager.install" });
     const assetDescriptor = await this.findCompatibleAsset();
     if (assetDescriptor == null) {
@@ -59035,7 +59035,7 @@ class ToolManager {
         strip: 5
         // fixme: figure this value out
       }).then(
-        (files) => files.length == 0 ? Promise.reject(`Could not find binary '${binaryName} in downloaded artifact'`) : Promise.resolve(files)
+        (files) => files.length == 0 ? Promise.reject(`Could not find binary '${binaryName}' in downloaded artifact`) : Promise.resolve(files)
       ).then(() => result.path = join(installDir, binaryName)).catch((err) => void logger.error(err));
     } finally {
       await rm(tempdir, { recursive: true });

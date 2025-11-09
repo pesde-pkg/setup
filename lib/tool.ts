@@ -40,7 +40,7 @@ export class ToolManager {
 	public async install(
 		download: Downloader,
 		installDir = import.meta.dirname,
-		binaryName = this.githubRepo.repo
+		binaryName = this.githubRepo.repo + (process.platform === "win32" ? ".exe" : "")
 	): Promise<InstallResult> {
 		const logger = this.logger.child({ scope: "toolmanager.install" });
 
@@ -71,7 +71,7 @@ export class ToolManager {
 			})
 				.then((files) =>
 					files.length == 0
-						? Promise.reject(`Could not find binary '${binaryName} in downloaded artifact'`)
+						? Promise.reject(`Could not find binary '${binaryName}' in downloaded artifact`)
 						: Promise.resolve(files)
 				)
 				.then(() => (result.path = join(installDir, binaryName)))
