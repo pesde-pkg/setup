@@ -59067,13 +59067,12 @@ class ToolManager {
       if (this.versionOrPredicate == "latest") {
         logger.warn("No explicit version requested, defaulting to latest");
         return await client.rest.repos.getLatestRelease({ ...this.githubRepo }).then(processRelease);
-      } else {
-        logger.info("Attempting to fetch version %s", this.versionOrPredicate);
-        return await client.rest.repos.getReleaseByTag({
-          ...this.githubRepo,
-          tag: this.versionOrPredicate
-        }).then(processRelease);
       }
+      logger.info("Attempting to fetch version %s", this.versionOrPredicate);
+      return await client.rest.repos.getReleaseByTag({
+        ...this.githubRepo,
+        tag: this.versionOrPredicate
+      }).then(processRelease);
     } else if (typeof this.versionOrPredicate == "function") {
       logger.debug("Version predicate function provided, will attempt to filter");
       const { data: releases } = await client.rest.repos.listReleases({ ...this.githubRepo });
@@ -59082,6 +59081,7 @@ class ToolManager {
           return processRelease({ data: release });
         }
       }
+      return Promise.reject("No matching release found for version specified");
     }
     return Promise.reject("unreachable: invalid versionOrPredicate type");
   }
@@ -114649,7 +114649,7 @@ async function setupTool(repo, version) {
   if (!toolPath) {
     let versionOpt = version;
     if (isDeepStrictEqual(repo, tools.pesde)) {
-      versionOpt = (potential) => potential.split("+")[0] === version;
+      versionOpt = (potential) => potential.match(/^v?(\d+\.\d+\.\d+)/)?.some((v) => v === version) || false;
     }
     toolPath = await new ToolManager(repo.owner, repo.repo).version(versionOpt).install(DownloadProvider.Actions).then((result) => result.path ? Promise.resolve(result) : Promise.reject("Download failed.")).catch((err) => void logger.error(err)).then(
       (result) => result.path ? toolCacheExports.cacheDir(dirname(result.path), repo.repo, result.version) : logger.error("Install failed.")

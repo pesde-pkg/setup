@@ -116,17 +116,19 @@ export class ToolManager {
 
 		if (typeof this.versionOrPredicate == "string") {
 			if (this.versionOrPredicate == "latest") {
+				// latest version
 				logger.warn("No explicit version requested, defaulting to latest");
 				return await gh.rest.repos.getLatestRelease({ ...this.githubRepo }).then(processRelease);
-			} else {
-				logger.info("Attempting to fetch version %s", this.versionOrPredicate);
-				return await gh.rest.repos
-					.getReleaseByTag({
-						...this.githubRepo,
-						tag: this.versionOrPredicate
-					})
-					.then(processRelease);
 			}
+
+			// explicit version
+			logger.info("Attempting to fetch version %s", this.versionOrPredicate);
+			return await gh.rest.repos
+				.getReleaseByTag({
+					...this.githubRepo,
+					tag: this.versionOrPredicate
+				})
+				.then(processRelease);
 		} else if (typeof this.versionOrPredicate == "function") {
 			logger.debug("Version predicate function provided, will attempt to filter");
 			const { data: releases } = await gh.rest.repos.listReleases({ ...this.githubRepo });
@@ -135,6 +137,8 @@ export class ToolManager {
 					return processRelease({ data: release });
 				}
 			}
+
+			return Promise.reject("No matching release found for version specified");
 		}
 
 		return Promise.reject("unreachable: invalid versionOrPredicate type");
