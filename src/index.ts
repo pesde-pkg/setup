@@ -39,7 +39,10 @@ async function setupTool(repo: Repo, version: string) {
 		if (isDeepStrictEqual(repo, tools.pesde)) {
 			// pesde releases include build metadata for corresponding registry version
 			// so we only compare the version part
-			versionOpt = (potential) => potential.split("+")[0] === version;
+
+			// note: this regex creates two matches: one with the leading 'v' and one without,
+			// so the user can choose to not specify a leading 'v' in their version input
+			versionOpt = (potential) => potential.match(/^v?(\d+\.\d+\.\d+)/)?.some((v) => v === version) || false;
 		}
 
 		toolPath = await new ToolManager(repo.owner, repo.repo)
