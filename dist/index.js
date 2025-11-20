@@ -2,7 +2,7 @@ import path, { join, basename as basename$1, dirname } from 'node:path';
 import require$$1$8, { tmpdir, homedir } from 'node:os';
 import process$1, { chdir, exit } from 'node:process';
 import require$$1$6, { stripVTControlCharacters, promisify, isDeepStrictEqual } from 'node:util';
-import { mkdir as mkdir$1, mkdtemp, rm, readFile as readFile$1 } from 'node:fs/promises';
+import { mkdir as mkdir$1, mkdtemp, rm, readFile as readFile$1, access } from 'node:fs/promises';
 import fs$1, { existsSync, appendFileSync } from 'node:fs';
 import require$$0$4 from 'util';
 import require$$0$5 from 'stream';
@@ -114662,9 +114662,18 @@ async function setupTool(repo, version) {
 const cacheLogger = parentLogger.child({ scope: "actions.cache" });
 if (coreExports.getState("post") === "true") {
   if (coreExports.getState("needsCache") === "true") {
-    const cacheId = await cacheExports.saveCache([...PESDE_PACKAGE_DIRS, PESDE_HOME], await cacheKey());
-    coreExports.saveState("needsCache", false);
-    cacheLogger.info(`Successfully cached to ${cacheId}, exiting`);
+    const toCache = [...PESDE_PACKAGE_DIRS, PESDE_HOME];
+    const canCache = toCache.some(
+      (path) => (
+        // check whether any of the directories to cache exist
+        access(path).then(() => true).catch(() => false)
+      )
+    );
+    if (canCache) {
+      const cacheId = await cacheExports.saveCache(toCache, await cacheKey());
+      coreExports.saveState("needsCache", false);
+      cacheLogger.info(`Successfully cached to ${cacheId}, exiting`);
+    }
   } else {
     cacheLogger.info("No caching required, exiting");
   }

@@ -2,6 +2,7 @@ import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { chdir, exit } from "node:process";
 import { isDeepStrictEqual } from "node:util";
+import { access } from "node:fs/promises";
 
 import { DownloadProvider } from "@/index.js";
 import logging from "@/logging/index.js";
@@ -69,10 +70,20 @@ if (core.getState("post") === "true") {
 	// post-run invocation, just cache or exit
 
 	if (core.getState("needsCache") === "true") {
-		const cacheId = await cache.saveCache([...PESDE_PACKAGE_DIRS, PESDE_HOME], await cacheKey());
-		core.saveState("needsCache", false); // notify future runs caching isn't required
+		const toCache = [...PESDE_PACKAGE_DIRS, PESDE_HOME];
+		const canCache = toCache.some((path) =>
+			// check whether any of the directories to cache exist
+			access(path)
+				.then(() => true)
+				.catch(() => false)
+		);
 
-		cacheLogger.info(`Successfully cached to ${cacheId}, exiting`);
+		if (canCache) {
+			const cacheId = await cache.saveCache(toCache, await cacheKey());
+			core.saveState("needsCache", false); // notify future runs caching isn't required
+
+			cacheLogger.info(`Successfully cached to ${cacheId}, exiting`);
+		}
 	} else {
 		cacheLogger.info("No caching required, exiting");
 	}
