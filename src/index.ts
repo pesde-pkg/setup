@@ -36,7 +36,7 @@ async function setupTool(repo: Repo, version: string) {
 	let toolPath = find(repo.repo, version);
 	if (!toolPath) {
 		let versionOpt: string | ((version: string) => boolean) = version;
-		if (isDeepStrictEqual(repo, tools.pesde)) {
+		if (isDeepStrictEqual(repo, tools.pesde) && version !== "latest") {
 			// pesde releases include build metadata for corresponding registry version
 			// so we only compare the version part
 

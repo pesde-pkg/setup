@@ -114648,7 +114648,7 @@ async function setupTool(repo, version) {
   let toolPath = toolCacheExports.find(repo.repo, version);
   if (!toolPath) {
     let versionOpt = version;
-    if (isDeepStrictEqual(repo, tools.pesde)) {
+    if (isDeepStrictEqual(repo, tools.pesde) && version !== "latest") {
       versionOpt = (potential) => potential.match(/^v?(\d+\.\d+\.\d+)/)?.some((v) => v === version) || false;
     }
     toolPath = await new ToolManager(repo.owner, repo.repo).version(versionOpt).install(DownloadProvider.Actions).then((result) => result.path ? Promise.resolve(result) : Promise.reject("Download failed.")).catch((err) => void logger.error(err)).then(
