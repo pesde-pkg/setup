@@ -23,6 +23,7 @@ const parentLogger = logging.child({ scope: "actions" });
 parentLogger.exitOnError = true;
 
 const PESDE_HOME = core.getInput("home") || process.env.PESDE_HOME || join(homedir(), ".pesde");
+core.exportVariable("PESDE_HOME", PESDE_HOME);
 
 async function setupTool(repo: Repo, version: string) {
 	const logger = parentLogger.child({ scope: "actions.setupTool" });
