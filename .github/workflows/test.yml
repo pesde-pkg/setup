@@ -23,11 +23,13 @@ jobs:
         uses: ./
         with:
           cache: ${{ matrix.cache }}
+        working-directory: test
 
       - name: Test pesde installation
         run: |
           pesde --version
-          cd test && pesde install --locked
+          pesde install --locked
+        working-directory: test
 
   install-with-lune:
     name: Install pesde with Lune
@@ -45,12 +47,14 @@ jobs:
         with:
           lune-version: latest
           cache: ${{ matrix.cache }}
+        working-directory: test
 
       - name: Test pesde installation
         run: |
           pesde --version
           pesde x pesde/hello
-          cd test && pesde install --locked
+          pesde install --locked
+        working-directory: test
 
       - name: Test Lune installation
         run: |
