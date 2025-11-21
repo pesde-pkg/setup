@@ -33,12 +33,12 @@ parentLogger.info(`Discovered pesde home directory: ${PESDE_HOME}`);
 function expandRelativeToWorkspace(path: string) {
 	const homeDir = homedir();
 
-	// Expand tilde
+	// expand tilde
 	if (path === "~" || path.startsWith("~/")) {
 		path = path.replace(/^~(?=$|\/|\\)/, homeDir);
 	}
 
-	// Expand $HOME and ${HOME}
+	// expand $HOME and ${HOME}
 	path = path.replace(/\$HOME/g, homeDir).replace(/\$\{HOME\}/g, homeDir);
 
 	return path;
@@ -100,6 +100,8 @@ if (core.getState("post") === "true") {
 					.catch(() => null);
 			})
 		).then((results) => results.filter((p): p is string => p != null));
+
+		cacheLogger.debug(`Can cache dirs: ${JSON.stringify(cacheableDirs)}`);
 
 		if (cacheableDirs.length != 0) {
 			const cacheId = await cache.saveCache(cacheableDirs, await cacheKey());

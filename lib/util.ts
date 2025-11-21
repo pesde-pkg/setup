@@ -120,6 +120,7 @@ export async function crossDeviceMoveDir(src: string, dest: string): Promise<voi
 		})
 	);
 
+	// safety: not cancel safe
 	await rm(srcNormalized, { recursive: true });
 }
 

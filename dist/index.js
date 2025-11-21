@@ -114694,6 +114694,7 @@ if (coreExports.getState("post") === "true") {
         return await access(p).then(() => p).catch(() => null);
       })
     ).then((results) => results.filter((p) => p != null));
+    cacheLogger.debug(`Can cache dirs: ${JSON.stringify(cacheableDirs)}`);
     if (cacheableDirs.length != 0) {
       const cacheId = await cacheExports.saveCache(cacheableDirs, await cacheKey());
       coreExports.saveState("needsCache", false);
