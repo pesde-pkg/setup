@@ -73,12 +73,12 @@ if (core.getState("post") === "true") {
 		const toCache = [...PESDE_PACKAGE_DIRS, PESDE_HOME];
 		const cacheableDirs = await Promise.all(
 			// filter out dirs which do not exist and cannot be cached
-			toCache.filter(async (p) => {
+			toCache.map(async (p) => {
 				return await access(p)
-					.then(() => true)
-					.catch(() => false);
+					.then(() => p)
+					.catch(() => null);
 			})
-		);
+		).then((results) => results.filter((p): p is string => p != null));
 
 		if (cacheableDirs.length != 0) {
 			const cacheId = await cache.saveCache(cacheableDirs, await cacheKey());
