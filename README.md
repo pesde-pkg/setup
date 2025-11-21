@@ -34,12 +34,8 @@ A usage example as well as the default values for the accepted inputs is provide
     # undefined, defaults to either `$PESDE_HOME` or `~/.pesde`, where the tilde corresponds
     # to the home directory.
     #
-    # ****IMPORTANT****
-    # There is a caveat though: the path must be relative to `${{ github.workspace }}`,
-    # especially for Windows, due to an internal actions limitation. This applies to
-    # `$PESDE_HOME` as well. The tilde (`~`) and references to `$HOME` are automatically
-    # expanded to their respective values relative to the workspace for each of the above
-    # in order to simplify this.
+    # The tilde (`~`) and references to `$HOME` are automatically expanded to the home
+    # directory.
     home: "~/.pesde"
 
     # The base directory containing the pesde project. This is utilized to figure out the

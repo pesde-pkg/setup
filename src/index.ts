@@ -1,7 +1,8 @@
-import { dirname } from "node:path";
-import { chdir, exit } from "node:process";
+import { dirname, join } from "node:path";
+import { chdir, env, exit } from "node:process";
 import { isDeepStrictEqual } from "node:util";
 import { access } from "node:fs/promises";
+import { homedir } from "node:os";
 
 import { DownloadProvider } from "@/index.js";
 import logging from "@/logging/index.js";
@@ -11,7 +12,7 @@ import { cacheKey, PESDE_PACKAGE_DIRS } from "./cache.js";
 import { cacheDir, find } from "@actions/tool-cache";
 import * as core from "@actions/core";
 import * as cache from "@actions/cache";
-import { ensureExists } from "@/util.js";
+import { mv, rmRF } from "@actions/io";
 
 export type Tool = "pesde" | "lune";
 export type Repo = { owner: string; repo: string };
@@ -23,23 +24,21 @@ const tools: Record<Tool, Repo> = {
 const parentLogger = logging.child({ scope: "actions" });
 parentLogger.exitOnError = true;
 
-const PESDE_HOME = expandRelativeToWorkspace(core.getInput("home") || process.env.PESDE_HOME || "~/.pesde");
-
-await ensureExists(PESDE_HOME);
+const PESDE_HOME = expandRelativeToWorkspace(core.getInput("home") || env.PESDE_HOME || "~/.pesde");
 core.exportVariable("PESDE_HOME", PESDE_HOME);
 
 parentLogger.info(`Discovered pesde home directory: ${PESDE_HOME}`);
 
 function expandRelativeToWorkspace(path: string) {
-	const workspaceRoot = dirname(process.env.GITHUB_WORKSPACE!);
+	const homeDir = homedir();
 
 	// Expand tilde
 	if (path === "~" || path.startsWith("~/")) {
-		path = path.replace(/^~(?=$|\/|\\)/, workspaceRoot);
+		path = path.replace(/^~(?=$|\/|\\)/, homeDir);
 	}
 
 	// Expand $HOME and ${HOME}
-	path = path.replace(/\$HOME/g, path).replace(/\$\{HOME\}/g, path);
+	path = path.replace(/\$HOME/g, homeDir).replace(/\$\{HOME\}/g, homeDir);
 
 	return path;
 }
@@ -79,14 +78,22 @@ async function setupTool(repo: Repo, version: string) {
 
 const cacheLogger = parentLogger.child({ scope: "actions.cache" });
 
+// on windows, it is impossible for `saveCache` to cache unless the pesde home dir can
+// be represented relatively to the github workspace. so, we create a tempdir which can
+// be cached, and transform it during restore. on all other platforms, we just use the
+// regular pesde home
+const pesdeHome = process.platform === "win32" ? join(dirname(env.GITHUB_WORKSPACE!), ".pesde-tmp") : PESDE_HOME;
+const cacheDirs = [...PESDE_PACKAGE_DIRS, pesdeHome];
+
 if (core.getState("post") === "true") {
 	// post-run invocation, just cache or exit
 
 	if (core.getState("needsCache") === "true") {
-		const toCache = [...PESDE_PACKAGE_DIRS, PESDE_HOME];
+		await mv(PESDE_HOME, pesdeHome); // both paths are same everywhere except on windows
+
 		const cacheableDirs = await Promise.all(
 			// filter out dirs which do not exist and cannot be cached
-			toCache.map(async (p) => {
+			cacheDirs.map(async (p) => {
 				return await access(p)
 					.then(() => p)
 					.catch(() => null);
@@ -96,6 +103,9 @@ if (core.getState("post") === "true") {
 		if (cacheableDirs.length != 0) {
 			const cacheId = await cache.saveCache(cacheableDirs, await cacheKey());
 			core.saveState("needsCache", false); // notify future runs caching isn't required
+
+			// remove only for windows, where it is a temp dir
+			if (process.platform === "win32") await rmRF(pesdeHome);
 
 			cacheLogger.info(`Successfully cached to ${cacheId}, exiting`);
 		}
@@ -117,12 +127,15 @@ await setupTool(tools.pesde, core.getInput("version") || "latest");
 core.saveState("post", true);
 
 if (core.getBooleanInput("cache")) {
-	await cache.restoreCache(PESDE_PACKAGE_DIRS, await cacheKey()).then((hit) => {
+	await cache.restoreCache(cacheDirs, await cacheKey()).then(async (hit) => {
 		if (!hit) {
 			cacheLogger.warn("Cache miss, dispatching future post-run to save cache");
 			core.saveState("needsCache", true); // notify future runs that they need to cache
 			return;
 		}
+
+		// move the temporary pesde home onto the expected path (windows only)
+		await mv(pesdeHome, PESDE_HOME);
 
 		cacheLogger.info(`Restored cache key ${hit} successfully`);
 	});

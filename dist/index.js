@@ -1,8 +1,8 @@
 import path, { join, basename as basename$1, dirname } from 'node:path';
-import process$1, { chdir, exit } from 'node:process';
+import process$1, { env, chdir, exit } from 'node:process';
 import require$$1$6, { stripVTControlCharacters, promisify, isDeepStrictEqual } from 'node:util';
 import { mkdir as mkdir$1, mkdtemp, rm, readFile as readFile$1, access } from 'node:fs/promises';
-import require$$1$8, { tmpdir } from 'node:os';
+import require$$1$8, { tmpdir, homedir } from 'node:os';
 import fs$1, { existsSync, appendFileSync } from 'node:fs';
 import require$$0$4 from 'util';
 import require$$0$5 from 'stream';
@@ -114628,22 +114628,23 @@ function requireCache () {
 
 var cacheExports = requireCache();
 
+var ioExports = requireIo();
+
 const tools = {
   pesde: { owner: "pesde-pkg", repo: "pesde" },
   lune: { owner: "lune-org", repo: "lune" }
 };
 const parentLogger = logging.child({ scope: "actions" });
 parentLogger.exitOnError = true;
-const PESDE_HOME = expandRelativeToWorkspace(coreExports.getInput("home") || process.env.PESDE_HOME || "~/.pesde");
-await ensureExists(PESDE_HOME);
+const PESDE_HOME = expandRelativeToWorkspace(coreExports.getInput("home") || env.PESDE_HOME || "~/.pesde");
 coreExports.exportVariable("PESDE_HOME", PESDE_HOME);
 parentLogger.info(`Discovered pesde home directory: ${PESDE_HOME}`);
 function expandRelativeToWorkspace(path) {
-  const workspaceRoot = dirname(process.env.GITHUB_WORKSPACE);
+  const homeDir = homedir();
   if (path === "~" || path.startsWith("~/")) {
-    path = path.replace(/^~(?=$|\/|\\)/, workspaceRoot);
+    path = path.replace(/^~(?=$|\/|\\)/, homeDir);
   }
-  path = path.replace(/\$HOME/g, path).replace(/\$\{HOME\}/g, path);
+  path = path.replace(/\$HOME/g, homeDir).replace(/\$\{HOME\}/g, homeDir);
   return path;
 }
 chdir(coreExports.getInput("cwd"));
@@ -114662,18 +114663,21 @@ async function setupTool(repo, version) {
   coreExports.addPath(toolPath);
 }
 const cacheLogger = parentLogger.child({ scope: "actions.cache" });
+const pesdeHome = process.platform === "win32" ? join(dirname(env.GITHUB_WORKSPACE), ".pesde-tmp") : PESDE_HOME;
+const cacheDirs = [...PESDE_PACKAGE_DIRS, pesdeHome];
 if (coreExports.getState("post") === "true") {
   if (coreExports.getState("needsCache") === "true") {
-    const toCache = [...PESDE_PACKAGE_DIRS, PESDE_HOME];
+    await ioExports.mv(PESDE_HOME, pesdeHome);
     const cacheableDirs = await Promise.all(
       // filter out dirs which do not exist and cannot be cached
-      toCache.map(async (p) => {
+      cacheDirs.map(async (p) => {
         return await access(p).then(() => p).catch(() => null);
       })
     ).then((results) => results.filter((p) => p != null));
     if (cacheableDirs.length != 0) {
       const cacheId = await cacheExports.saveCache(cacheableDirs, await cacheKey());
       coreExports.saveState("needsCache", false);
+      if (process.platform === "win32") await ioExports.rmRF(pesdeHome);
       cacheLogger.info(`Successfully cached to ${cacheId}, exiting`);
     }
   } else {
@@ -114687,12 +114691,13 @@ if (luneVersion !== "") await setupTool(tools.lune, luneVersion);
 await setupTool(tools.pesde, coreExports.getInput("version") || "latest");
 coreExports.saveState("post", true);
 if (coreExports.getBooleanInput("cache")) {
-  await cacheExports.restoreCache(PESDE_PACKAGE_DIRS, await cacheKey()).then((hit) => {
+  await cacheExports.restoreCache(cacheDirs, await cacheKey()).then(async (hit) => {
     if (!hit) {
       cacheLogger.warn("Cache miss, dispatching future post-run to save cache");
       coreExports.saveState("needsCache", true);
       return;
     }
+    await ioExports.mv(pesdeHome, PESDE_HOME);
     cacheLogger.info(`Restored cache key ${hit} successfully`);
   });
 }
