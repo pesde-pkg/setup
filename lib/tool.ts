@@ -1,5 +1,5 @@
 import { tmpdir } from "node:os";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtempDisposable } from "node:fs/promises";
 import { basename, join } from "node:path";
 
 import pkg from "../package.json" with { type: "json" };
@@ -57,28 +57,24 @@ export class ToolManager {
 		logger.info(`Attempting to download '${assetName}' (${humanReadableSize(assetSize)})`);
 
 		const result: InstallResult = { version: this.versionOrPredicate as string };
-		const tempdir = await mkdtemp(join(tmpdir(), `${pkg.name}-`));
+		const tempdir = await mkdtempDisposable(join(tmpdir(), `${pkg.name}-`));
 		await ensureExists(installDir);
 
-		try {
-			const compressedArchive = join(tempdir, assetDescriptor.asset.name);
+		const compressedArchive = join(tempdir.path, assetDescriptor.asset.name);
 
-			// download and decompress the file(await import("@actions/tool-cache").
-			await download(assetDescriptor.asset.browser_download_url, compressedArchive, assetSize);
-			await decompressCommonFormats(compressedArchive, installDir, {
-				filter: (file) => basename(file.path) == binaryName,
-				strip: 5 // fixme: figure this value out
-			})
-				.then((files) =>
-					files.length == 0
-						? Promise.reject(`Could not find binary '${binaryName}' in downloaded artifact`)
-						: Promise.resolve(files)
-				)
-				.then(() => (result.path = join(installDir, binaryName)))
-				.catch((err) => void logger.error(err));
-		} finally {
-			await rm(tempdir, { recursive: true });
-		}
+		// download and decompress the file(await import("@actions/tool-cache").
+		await download(assetDescriptor.asset.browser_download_url, compressedArchive, assetSize);
+		await decompressCommonFormats(compressedArchive, installDir, {
+			filter: (file) => basename(file.path) == binaryName,
+			strip: 5 // fixme: figure this value out
+		})
+			.then((files) =>
+				files.length == 0
+					? Promise.reject(`Could not find binary '${binaryName}' in downloaded artifact`)
+					: Promise.resolve(files)
+			)
+			.then(() => (result.path = join(installDir, binaryName)))
+			.catch((err) => void logger.error(err));
 
 		// if result.path isn't defined, there has been an error
 		return result;

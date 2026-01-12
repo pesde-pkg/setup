@@ -1,7 +1,7 @@
 import path, { join, basename as basename$1, dirname } from 'node:path';
 import process$1, { env, chdir, exit } from 'node:process';
 import require$$1$6, { stripVTControlCharacters, promisify, isDeepStrictEqual } from 'node:util';
-import { mkdir as mkdir$1, mkdtemp, rm, readFile as readFile$1, access } from 'node:fs/promises';
+import { mkdir as mkdir$1, mkdtempDisposable, readFile as readFile$1, access } from 'node:fs/promises';
 import require$$1$8, { tmpdir, homedir } from 'node:os';
 import fs$1, { existsSync, appendFileSync } from 'node:fs';
 import require$$0$4 from 'util';
@@ -59025,21 +59025,17 @@ class ToolManager {
     const { size: assetSize, name: assetName } = assetDescriptor.asset;
     logger.info(`Attempting to download '${assetName}' (${humanReadableSize(assetSize)})`);
     const result = { version: this.versionOrPredicate };
-    const tempdir = await mkdtemp(join(tmpdir(), `${pkg.name}-`));
+    const tempdir = await mkdtempDisposable(join(tmpdir(), `${pkg.name}-`));
     await ensureExists(installDir);
-    try {
-      const compressedArchive = join(tempdir, assetDescriptor.asset.name);
-      await download(assetDescriptor.asset.browser_download_url, compressedArchive, assetSize);
-      await decompressCommonFormats(compressedArchive, installDir, {
-        filter: (file) => basename$1(file.path) == binaryName,
-        strip: 5
-        // fixme: figure this value out
-      }).then(
-        (files) => files.length == 0 ? Promise.reject(`Could not find binary '${binaryName}' in downloaded artifact`) : Promise.resolve(files)
-      ).then(() => result.path = join(installDir, binaryName)).catch((err) => void logger.error(err));
-    } finally {
-      await rm(tempdir, { recursive: true });
-    }
+    const compressedArchive = join(tempdir.path, assetDescriptor.asset.name);
+    await download(assetDescriptor.asset.browser_download_url, compressedArchive, assetSize);
+    await decompressCommonFormats(compressedArchive, installDir, {
+      filter: (file) => basename$1(file.path) == binaryName,
+      strip: 5
+      // fixme: figure this value out
+    }).then(
+      (files) => files.length == 0 ? Promise.reject(`Could not find binary '${binaryName}' in downloaded artifact`) : Promise.resolve(files)
+    ).then(() => result.path = join(installDir, binaryName)).catch((err) => void logger.error(err));
     return result;
   }
   async findCompatibleAsset() {
