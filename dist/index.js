@@ -57,8 +57,84 @@ function _mergeNamespaces(n, m) {
 }
 
 var name = "setup-pesde";
+var version$3 = "1.0.0";
+var description = "A GitHub action to install pesde";
+var license$1 = "GPL-3.0-only";
+var author = "Erica Marigold <hi@devcomp.xyz>";
+var main$1 = "dist/index.js";
+var type = "module";
+var scripts = {
+	prepare: "node .husky/husky.ts",
+	lint: "eslint **/*.ts --cache",
+	prettier: "node --experimental-strip-types node_modules/prettier/bin/prettier.cjs",
+	"format:check": "pnpm prettier",
+	format: "pnpm prettier --write .",
+	typecheck: "tsc --noEmit",
+	build: "rollup -c rollup.config.ts",
+	dev: "pnpm build && NODE_LOG=debug GITHUB_TOKEN=$(gh auth token) node dist/"
+};
+var engines = {
+	pnpm: "^10.13.1",
+	node: "^24.12.0"
+};
+var dependencies = {
+	"@actions/cache": "^4.1.0",
+	"@actions/core": "^1.11.1",
+	"@actions/exec": "^1.1.1",
+	"@actions/github": "^6.0.1",
+	"@actions/io": "^1.1.3",
+	"@actions/tool-cache": "^2.0.2",
+	decompress: "npm:@xhmikosr/decompress@^10.2.0",
+	"decompress-tar": "npm:@xhmikosr/decompress-tar@^8.1.0",
+	"decompress-tarbz2": "npm:@xhmikosr/decompress-tarbz2@^8.1.0",
+	"decompress-targz": "npm:@xhmikosr/decompress-targz@^8.1.0",
+	"decompress-tarxz": "npm:@felipecrs/decompress-tarxz@^5.0.4",
+	"decompress-unzip": "npm:@xhmikosr/decompress-unzip@^7.1.0",
+	"is-interactive": "^2.0.0",
+	ora: "^9.0.0",
+	tslib: "^2.8.1",
+	winston: "^3.18.3",
+	"winston-transport": "^4.9.0"
+};
+var devDependencies = {
+	"@eslint/js": "^9.39.1",
+	"@octokit/openapi-types": "^20.0.0",
+	"@octokit/types": "^15.0.1",
+	"@rollup/plugin-commonjs": "^29.0.0",
+	"@rollup/plugin-json": "^6.1.0",
+	"@rollup/plugin-node-resolve": "^16.0.3",
+	"@types/decompress": "^4.2.7",
+	"@types/node": "^24.9.1",
+	"@typescript-eslint/eslint-plugin": "^8.46.3",
+	"@typescript-eslint/parser": "^8.46.3",
+	eslint: "^9.38.0",
+	"eslint-config-prettier": "^10.1.8",
+	"eslint-import-resolver-typescript": "^4.4.4",
+	"eslint-plugin-import": "^2.32.0",
+	"eslint-plugin-prettier": "^5.5.4",
+	globals: "^16.5.0",
+	husky: "^9.1.7",
+	jiti: "^2.6.1",
+	prettier: "^3.6.2",
+	rollup: "^4.52.5",
+	"rollup-plugin-esbuild": "^6.2.1",
+	"rollup-plugin-tsconfig-paths": "^1.5.2",
+	typescript: "^5.9.3",
+	"typescript-eslint": "^8.46.3"
+};
 var pkg = {
-	name: name};
+	name: name,
+	version: version$3,
+	description: description,
+	license: license$1,
+	author: author,
+	main: main$1,
+	type: type,
+	scripts: scripts,
+	engines: engines,
+	dependencies: dependencies,
+	devDependencies: devDependencies
+};
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
@@ -59001,6 +59077,51 @@ async function ensureExists(dir) {
   }
 }
 
+var __knownSymbol = (name, symbol) => (symbol = Symbol[name]) ? symbol : Symbol.for("Symbol." + name);
+var __typeError = (msg) => {
+  throw TypeError(msg);
+};
+var __using = (stack, value, async) => {
+  if (value != null) {
+    if (typeof value !== "object" && typeof value !== "function") __typeError("Object expected");
+    var dispose, inner;
+    dispose = value[__knownSymbol("asyncDispose")];
+    if (dispose === void 0) {
+      dispose = value[__knownSymbol("dispose")];
+      inner = dispose;
+    }
+    if (typeof dispose !== "function") __typeError("Object not disposable");
+    if (inner) dispose = function() {
+      try {
+        inner.call(this);
+      } catch (e) {
+        return Promise.reject(e);
+      }
+    };
+    stack.push([async, dispose, value]);
+  } else {
+    stack.push([async]);
+  }
+  return value;
+};
+var __callDispose = (stack, error, hasError) => {
+  var E = typeof SuppressedError === "function" ? SuppressedError : function(e, s, m, _2) {
+    return _2 = Error(m), _2.name = "SuppressedError", _2.error = e, _2.suppressed = s, _2;
+  };
+  var fail = (e) => error = hasError ? new E(e, error, "An error was suppressed during disposal") : (hasError = true, e);
+  var next = (it) => {
+    while (it = stack.pop()) {
+      try {
+        var result = it[1] && it[1].call(it[2]);
+        if (it[0]) return Promise.resolve(result).then(next, (e) => (fail(e), next()));
+      } catch (e) {
+        fail(e);
+      }
+    }
+    if (hasError) throw error;
+  };
+  return next();
+};
 class ToolManager {
   // base arguments for any repo related operations
   githubRepo;
@@ -59014,29 +59135,37 @@ class ToolManager {
     return this;
   }
   async install(download, installDir = import.meta.dirname, binaryName = this.githubRepo.repo + (process.platform === "win32" ? ".exe" : "")) {
-    const logger = this.logger.child({ scope: "toolmanager.install" });
-    const assetDescriptor = await this.findCompatibleAsset();
-    if (assetDescriptor == null) {
-      logger.error(
-        `No compatible artifact found for current system for ${this.githubRepo.owner}/${this.githubRepo.repo}`
-      );
-      throw new Error("No artifact found");
+    var _stack = [];
+    try {
+      const logger = this.logger.child({ scope: "toolmanager.install" });
+      const assetDescriptor = await this.findCompatibleAsset();
+      if (assetDescriptor == null) {
+        logger.error(
+          `No compatible artifact found for current system for ${this.githubRepo.owner}/${this.githubRepo.repo}`
+        );
+        throw new Error("No artifact found");
+      }
+      const { size: assetSize, name: assetName } = assetDescriptor.asset;
+      logger.info(`Attempting to download '${assetName}' (${humanReadableSize(assetSize)})`);
+      const result = { version: this.versionOrPredicate };
+      const tempdir = __using(_stack, await mkdtempDisposable(join(tmpdir(), `${pkg.name}-`)), true);
+      await ensureExists(installDir);
+      const compressedArchive = join(tempdir.path, assetDescriptor.asset.name);
+      await download(assetDescriptor.asset.browser_download_url, compressedArchive, assetSize);
+      await decompressCommonFormats(compressedArchive, installDir, {
+        filter: (file) => basename$1(file.path) == binaryName,
+        strip: 5
+        // fixme: figure this value out
+      }).then(
+        (files) => files.length == 0 ? Promise.reject(`Could not find binary '${binaryName}' in downloaded artifact`) : Promise.resolve(files)
+      ).then(() => result.path = join(installDir, binaryName)).catch((err) => void logger.error(err));
+      return result;
+    } catch (_2) {
+      var _error = _2, _hasError = true;
+    } finally {
+      var _promise = __callDispose(_stack, _error, _hasError);
+      _promise && await _promise;
     }
-    const { size: assetSize, name: assetName } = assetDescriptor.asset;
-    logger.info(`Attempting to download '${assetName}' (${humanReadableSize(assetSize)})`);
-    const result = { version: this.versionOrPredicate };
-    const tempdir = await mkdtempDisposable(join(tmpdir(), `${pkg.name}-`));
-    await ensureExists(installDir);
-    const compressedArchive = join(tempdir.path, assetDescriptor.asset.name);
-    await download(assetDescriptor.asset.browser_download_url, compressedArchive, assetSize);
-    await decompressCommonFormats(compressedArchive, installDir, {
-      filter: (file) => basename$1(file.path) == binaryName,
-      strip: 5
-      // fixme: figure this value out
-    }).then(
-      (files) => files.length == 0 ? Promise.reject(`Could not find binary '${binaryName}' in downloaded artifact`) : Promise.resolve(files)
-    ).then(() => result.path = join(installDir, binaryName)).catch((err) => void logger.error(err));
-    return result;
   }
   async findCompatibleAsset() {
     const logger = this.logger.child({ scope: "toolmanager.findCompatibleAsset" });

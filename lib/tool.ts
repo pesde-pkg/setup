@@ -57,7 +57,7 @@ export class ToolManager {
 		logger.info(`Attempting to download '${assetName}' (${humanReadableSize(assetSize)})`);
 
 		const result: InstallResult = { version: this.versionOrPredicate as string };
-		const tempdir = await mkdtempDisposable(join(tmpdir(), `${pkg.name}-`));
+		await using tempdir = await mkdtempDisposable(join(tmpdir(), `${pkg.name}-`));
 		await ensureExists(installDir);
 
 		const compressedArchive = join(tempdir.path, assetDescriptor.asset.name);
