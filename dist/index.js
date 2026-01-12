@@ -1,7 +1,7 @@
-import path, { resolve, join, basename as basename$1, dirname } from 'node:path';
-import process$1, { env, exit } from 'node:process';
+import path, { join, basename as basename$1, dirname } from 'node:path';
+import process$1, { env, chdir, exit } from 'node:process';
 import require$$1$6, { stripVTControlCharacters, promisify, isDeepStrictEqual } from 'node:util';
-import { stat, readdir, copyFile, readlink as readlink$1, symlink as symlink$1, rm, mkdir as mkdir$1, mkdtemp, readFile as readFile$1, access } from 'node:fs/promises';
+import { mkdir as mkdir$1, mkdtemp, rm, readFile as readFile$1, access } from 'node:fs/promises';
 import require$$1$8, { tmpdir, homedir } from 'node:os';
 import fs$1, { existsSync, appendFileSync } from 'node:fs';
 import require$$0$4 from 'util';
@@ -59000,26 +59000,6 @@ async function ensureExists(dir) {
     throw err;
   }
 }
-async function crossDeviceMoveDir(src, dest) {
-  const srcNormalized = resolve(src);
-  const destNormalized = resolve(dest);
-  if (process.platform !== "win32" || srcNormalized === destNormalized) return;
-  const srcStat = await stat(srcNormalized);
-  if (!srcStat.isDirectory()) throw new Error(`Source is not a directory: ${src}`);
-  await ensureExists(destNormalized);
-  await Promise.all(
-    (await readdir(srcNormalized, { withFileTypes: true })).map((entry) => {
-      const srcPath = join(srcNormalized, entry.name);
-      const destPath = join(destNormalized, entry.name);
-      if (entry.isDirectory()) return crossDeviceMoveDir(srcPath, destPath);
-      if (entry.isFile()) return copyFile(srcPath, destPath);
-      if (entry.isSymbolicLink()) {
-        return readlink$1(srcPath).then((target) => symlink$1(target, destPath));
-      }
-    })
-  );
-  await rm(srcNormalized, { recursive: true });
-}
 
 class ToolManager {
   // base arguments for any repo related operations
@@ -114648,8 +114628,6 @@ function requireCache () {
 
 var cacheExports = requireCache();
 
-var ioExports = requireIo();
-
 const tools = {
   pesde: { owner: "pesde-pkg", repo: "pesde" },
   lune: { owner: "lune-org", repo: "lune" }
@@ -114667,6 +114645,7 @@ function expandRelativeToWorkspace(path) {
   path = path.replace(/\$HOME/g, homeDir).replace(/\$\{HOME\}/g, homeDir);
   return path;
 }
+chdir(coreExports.getInput("cwd"));
 async function setupTool(repo, version) {
   const logger = parentLogger.child({ scope: "actions.setupTool" });
   let toolPath = toolCacheExports.find(repo.repo, version);
@@ -114682,11 +114661,12 @@ async function setupTool(repo, version) {
   coreExports.addPath(toolPath);
 }
 const cacheLogger = parentLogger.child({ scope: "actions.cache" });
-const pesdeHome = process.platform === "win32" ? join(env.GITHUB_WORKSPACE, ".pesde-tmp") : PESDE_HOME;
-const cacheDirs = [...PESDE_PACKAGE_DIRS, pesdeHome];
+const cacheDirs = [...PESDE_PACKAGE_DIRS, PESDE_HOME];
 if (coreExports.getState("post") === "true") {
   if (coreExports.getState("needsCache") === "true") {
-    await crossDeviceMoveDir(PESDE_HOME, pesdeHome);
+    if (process.platform === "win32") {
+      cacheLogger.warn("Skipping caching, currently not supported on Windows");
+    }
     const cacheableDirs = await Promise.all(
       // filter out dirs which do not exist and cannot be cached
       cacheDirs.map(async (p) => {
@@ -114697,7 +114677,6 @@ if (coreExports.getState("post") === "true") {
     if (cacheableDirs.length != 0) {
       const cacheId = await cacheExports.saveCache(cacheableDirs, await cacheKey());
       coreExports.saveState("needsCache", false);
-      if (process.platform === "win32") await ioExports.rmRF(pesdeHome);
       cacheLogger.info(`Successfully cached to ${cacheId}, exiting`);
     }
   } else {
@@ -114717,7 +114696,6 @@ if (coreExports.getBooleanInput("cache")) {
       coreExports.saveState("needsCache", true);
       return;
     }
-    await crossDeviceMoveDir(pesdeHome, PESDE_HOME);
     cacheLogger.info(`Restored cache key ${hit} successfully`);
   });
 }
