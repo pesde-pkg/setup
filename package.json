@@ -1,6 +1,6 @@
 {
 	"name": "setup-pesde",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"description": "A GitHub action to install pesde",
 	"license": "GPL-3.0-only",
 	"author": "Erica Marigold <hi@devcomp.xyz>",
