@@ -84,6 +84,7 @@ if (core.getState("post") === "true") {
 		if (process.platform === "win32") {
 			// caching is broken on windows, where none of the directories match no matter what
 			cacheLogger.warn("Skipping caching, currently not supported on Windows");
+			exit(0);
 		}
 
 		const cacheableDirs = await Promise.all(

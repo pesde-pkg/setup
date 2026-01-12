@@ -114666,6 +114666,7 @@ if (coreExports.getState("post") === "true") {
   if (coreExports.getState("needsCache") === "true") {
     if (process.platform === "win32") {
       cacheLogger.warn("Skipping caching, currently not supported on Windows");
+      exit(0);
     }
     const cacheableDirs = await Promise.all(
       // filter out dirs which do not exist and cannot be cached
