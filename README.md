@@ -11,7 +11,7 @@ A usage example as well as the default values for the accepted inputs is provide
   uses: actions/checkout@v5
 
 - name: Setup pesde
-  uses: pesde-pkg/setup-pesde@v1
+  uses: pesde-pkg/setup@v1
   with:
     # The token used to send requests to the API, defaults to `github.token`
     # unless running a self-hosted enterprise instance.
