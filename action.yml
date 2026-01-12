@@ -21,6 +21,6 @@ inputs:
     description: "Base directory where the pesde project is located (defaults to $GITHUB_WORKSPACE)"
     default: ${{ github.workspace }}
 runs:
-  using: "node20"
+  using: "node24"
   main: "dist/index.js"
   post: "dist/index.js"
