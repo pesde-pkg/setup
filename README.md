@@ -45,6 +45,10 @@ A usage example as well as the default values for the accepted inputs is provide
 
 ## Caching
 
+> [!WARNING]  
+> The caching step is always skipped on Windows runners, due to some technical issues
+> as of right now. It is intended to be fixed in a future release.
+
 The uniqueness of a cache and whether caching is required is obtained by a cache key of the
 format `pesde-{OS}-{ARCH}-{HASH}`.
 
